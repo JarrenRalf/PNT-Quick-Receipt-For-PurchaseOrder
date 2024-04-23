@@ -810,7 +810,6 @@ function updateItems()
   const numItems = itemList.length;
   spreadsheet.getSheetByName('Item List').getRange(1, 1, numItems).setValues(itemList);
   spreadsheet.getSheetByName('Recently Created').getRange(1, 1, numItems).setValues(sortedItems);
-
 }
 
 /**
