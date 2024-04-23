@@ -109,8 +109,8 @@ function allItems()
   sheet.getRange(1, 1).clearContent() // Clear the search box
     .offset(4, 0, sheet.getMaxRows() - 4).clearContent() // Clear the previous search
     .offset(0, 0, numItems).setValues(recentlyCreatedSheet.getSheetValues(1, 1, numItems, 1)) // Set the values
-    .offset(-3, 7, 1, 1).setValue("Items displayed in order of newest to oldest.") // Tell user items are sorted from newest to oldest
-    .offset(0, -1).setValue((new Date().getTime() - startTime)/1000 + " seconds"); // Function runtime
+    .offset(-3, 8, 1, 1).setValue("Items displayed in order of newest to oldest.") // Tell user items are sorted from newest to oldest
+    .offset(-1, -2).setValue((new Date().getTime() - startTime)/1000 + " seconds"); // Function runtime
   spreadsheet.toast('PNT\'s most recently created items are being displayed.');
 }
 
@@ -142,7 +142,9 @@ function clearExport()
 }
 
 /**
+ * This function places the current Purchase Order or Quick Receipt on the Export page for importing.
  * 
+ * @author Jarren Ralf
  */
 function completeReceipt()
 {
@@ -292,21 +294,13 @@ function completeReceipt()
 }
 
 /**
- * This function
+ * This function creates the trigger for updating the items daily.
  * 
  * @author Jarren Ralf
  */
-function vendorSelection(range, spreadsheet)
+function createTrigger()
 {
-  const selectedVendor = range.getValue();
-
-  if (isNotBlank(selectedVendor))
-  {
-    const vendorSheet = spreadsheet.getSheetByName('Vendor List');
-    range.offset(-1, 0).setValue(vendorSheet.getSheetValues(2, 1, vendorSheet.getLastRow() - 1, 2).find(vendor => vendor[1] === selectedVendor)[0])
-  }
-  else
-    range.offset(-1, 0).setValue('');
+  ScriptApp.newTrigger('updateItems').timeBased().everyDays(1).atHour(23).create();
 }
 
 /**
@@ -422,66 +416,6 @@ function isEveryValueBlank(values)
 function isNotBlank(str)
 {
   return str !== '';
-}
-
-/**
- * This function
- * 
- * @author Jarren Ralf
- */
-function priceSelection(range, sheet, spreadsheet)
-{
-  const selectedPricing = range.getValue();
-
-  if (isNotBlank(selectedPricing))
-  {
-    spreadsheet.toast('Computing price change...')
-
-    switch (selectedPricing)
-    {
-      case 'Retail Pricing':
-        var price = 1;
-        break;
-      case 'Guide Pricing':
-        var price = 2;
-        break;
-      case 'Lodge Pricing':
-        var price = 3;
-        break;
-      case 'Wholesale Pricing':
-        var price = 4;
-        break;
-    }
-
-    const discountSheet = SpreadsheetApp.openById('1gXQ7uKEYPtyvFGZVmlcbaY6n6QicPBhnCBxk-xqwcFs').getSheetByName('Discount Percentages')
-    const discounts = discountSheet.getSheetValues(2, 11, discountSheet.getLastRow() - 1, 5);
-    const BASE_PRICE = 1;
-    var itemPricing;
-
-    const numRows = getLastRowSpecial(sheet.getSheetValues(5, 4, sheet.getMaxRows(), 1));
-
-    if (numRows > 0)
-    {
-      const itemRange = sheet.getRange(5, 4, getLastRowSpecial(sheet.getSheetValues(5, 4, sheet.getMaxRows(), 1)), 2);
-
-      const order = itemRange.getValues().map(item => {
-        itemPricing = discounts.find(sku => sku[0].split(' - ').pop().toString().toUpperCase() === item[0]); // Find the item pricing on the discount sheet
-
-        if (itemPricing != undefined && itemPricing[BASE_PRICE] != 0) // SKU is assumed to be valid
-          item[1] = (price !== 1) ? (itemPricing[BASE_PRICE]*(100 - itemPricing[price])/100).toFixed(2) : itemPricing[price];
-
-        return item
-      }) 
-
-      itemRange.setValues(order);
-      spreadsheet.toast('Price change complete.')
-    }
-    else
-    {
-      range.offset(0, -1).activate();
-      spreadsheet.toast('Please add some items to the order.')
-    }
-  }
 }
 
 /**
@@ -841,7 +775,53 @@ function search_Vendor(spreadsheet, sheet)
 }
 
 /**
- * This fucntion...
+* Sorts data by the created date of the product for the richmond spreadsheet.
+*
+* @param  {String[]} a : The current array value to compare
+* @param  {String[]} b : The next array value to compare
+* @return {String[][]} The output data.
+* @author Jarren Ralf
+*/
+function sortByCreatedDate(a, b)
+{
+  return (a[1] === b[1]) ? 0 : (a[1] < b[1]) ? 1 : -1;
+}
+
+/**
+ * This function updates all of the items daily.
+ * 
+ * @author Jarren Ralf
+ */
+function updateItems()
+{
+  var d,  itemList = [];
+  const spreadsheet = SpreadsheetApp.getActive();
+  const sortedItems = Utilities.parseCsv(DriveApp.getFilesByName("inventory.csv").next().getBlob().getDataAsString()).map(item => {
+    itemList.push([item[1]]);
+    d = item[6].split('.');                           // Split the date at the "."
+    item[6] = new Date(d[2],d[1] - 1,d[0]).getTime(); // Convert the date sting to a striong object for sorting purposes
+  
+    return [item[1], item[6]];
+  }).sort(sortByCreatedDate).sort(sortByCreatedDate).map(descrip => [descrip[0]])
+
+  // Remove the headers
+  itemList.shift();
+  sortedItems.shift();
+  const numItems = itemList.length;
+  spreadsheet.getSheetByName('Item List').getRange(1, 1, numItems).setValues(itemList);
+  spreadsheet.getSheetByName('Recently Created').getRange(1, 1, numItems).setValues(sortedItems);
+
+}
+
+/**
+ * This function manages the imported list of Vendor names and numbers and puts that information on the hidden Vendor List sheet.
+ * 
+ * @param   {Number}     numRows    : The number of rows on the imported vendor sheet
+ * @param   {Number}     numCols    : The number of columns on the imported vendor sheet
+ * @param   {Sheet}       sheet     : The imported sheet (The new vendor list)
+ * @param   {Sheet[]}     sheets    : All of the sheets of the spreadsheet
+ * @param {Spreadsheet} spreadsheet : The active spreadsheet
+ * @author Jarren Ralf
  */
 function updateVendorList(numRows, numCols, sheet, sheets, spreadsheet)
 {
@@ -862,4 +842,24 @@ function updateVendorList(numRows, numCols, sheet, sheets, spreadsheet)
 function userHasPressedDelete(value)
 {
   return value === undefined;
+}
+
+/**
+ * This function takes the selected vendor name from the drop down and retreives the corresponding Vendor number.
+ * 
+ * @param {Range} range : The range of the data validation where the vendor name is selected.
+ * @param {Spreadsheet} : The active spreadsheet.
+ * @author Jarren Ralf
+ */
+function vendorSelection(range, spreadsheet)
+{
+  const selectedVendor = range.getValue();
+
+  if (isNotBlank(selectedVendor))
+  {
+    const vendorSheet = spreadsheet.getSheetByName('Vendor List');
+    range.offset(-1, 0).setValue(vendorSheet.getSheetValues(2, 1, vendorSheet.getLastRow() - 1, 2).find(vendor => vendor[1] === selectedVendor)[0])
+  }
+  else
+    range.offset(-1, 0).setValue('');
 }
