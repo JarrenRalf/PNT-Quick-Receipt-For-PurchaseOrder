@@ -17,16 +17,22 @@ function installedOnEdit(e)
 
   if (isSingleColumn && sheet.getSheetName() === 'Item Search')
   {
-    if (row == 1 && col == 1 && (rowEnd == null || rowEnd == 2 || isSingleRow)) // Item Search
-      search(e, spreadsheet, sheet, false);
-    else if (row == 1 && col == 9 && (rowEnd == null || isSingleRow)) // Vendor Search
-      search_Vendor(spreadsheet, sheet);
+    if (row == 1)
+    {
+      if (col == 1 && (rowEnd == null || rowEnd == 2 || isSingleRow)) // Item Search
+        search(e, spreadsheet, sheet, false);
+      else if (col == 9 && (rowEnd == null || isSingleRow)) // Vendor Search
+        search_Vendor(spreadsheet, sheet);
+    }
     else if (row == 2 && col == 2) // Vendor Selection
       vendorSelection(range, spreadsheet);
-    else if (row > 4 && col == 1 && rowEnd >= row) // Item Search
-      search(e, spreadsheet, sheet, true);
-    else if (row > 4 && col == 8) // Possibly deleting items from order
-      deleteItemsFromOrder(sheet, range, range.getValue(), row, isSingleRow, isSingleColumn, spreadsheet);
+    else if (row > 4)
+    {
+      if (col == 1 && rowEnd >= row) // Item Search
+        search(e, spreadsheet, sheet, true);
+      else if (col == 8) // Possibly deleting items from order
+        deleteItemsFromOrder(sheet, range, range.getValue(), row, isSingleRow, isSingleColumn, spreadsheet);
+    }
   }
 }
 
@@ -53,7 +59,8 @@ function onChange(e)
  */
 function onOpen()
 {
-  SpreadsheetApp.getUi().createMenu('Export').addItem('Complete', 'completeReceipt').addItem('Clear', 'clearExport').addToUi();
+  SpreadsheetApp.getUi().createMenu('Export').addItem('Complete', 'completeReceipt').addItem('Clear', 'clearExport')
+    .addSeparator().addItem('Update Items', 'updateItems').addToUi();
 }
 
 /**
@@ -421,6 +428,36 @@ function isNotBlank(str)
 }
 
 /**
+ * This function returns true if the presented number is a UPC-A, false otherwise.
+ * 
+ * @param {Number} upcNumber : The UPC-A number
+ * @returns Whether the given value is a UPC-A or not
+ * @author Jarren Ralf
+ */
+function isUPC_A(upcNumber)
+{
+  for (var i = 0, sum = 0, upc = upcNumber.toString(); i < upc.length - 1; i++)
+    sum += (i % 2 === 0) ? Number(upc[i])*3 : Number(upc[i])
+
+  return upc.endsWith(Math.ceil(sum/10)*10 - sum)
+}
+
+/**
+ * This function returns true if the presented number is a EAN_13, false otherwise.
+ * 
+ * @param {Number} upcNumber : The EAN_13 number
+ * @returns Whether the given value is a EAN_13 or not
+ * @author Jarren Ralf
+ */
+function isEAN_13(upcNumber)
+{
+  for (var i = 0, sum = 0, upc = upcNumber.toString(); i < upc.length - 1; i++)
+    sum += (i % 2 === 0) ? Number(upc[i]) : Number(upc[i])*3
+
+  return upc.endsWith(Math.ceil(sum/10)*10 - sum)
+}
+
+/**
  * This function process the imported data.
  * 
  * @param {Event Object} : The event object on an spreadsheet edit.
@@ -633,31 +670,72 @@ function search(e, spreadsheet, sheet, isMultipleItemSearch)
     {
       spreadsheet.toast('Searching...')
 
-      const inventorySheet = spreadsheet.getSheetByName('Item List');
-      const data = inventorySheet.getSheetValues(1, 1, inventorySheet.getLastRow(), 1);
       const numSearches = searches.length; // The number searches
+      var isBarcodeScanned = false;
       var numSearchWords;
-
+      
       if (searchesOrNot.length === 1) // The word 'not' WASN'T found in the string
       {
-        for (var i = 0; i < data.length; i++) // Loop through all of the descriptions from the search data
+        if (/^\d+$/.test(searches[0][0]) && (isUPC_A(searches[0][0]) || isEAN_13(searches[0][0])) && numSearches === 1 && searches[0].length == 1) // Check if a barcode was scanned in the cell
         {
-          loop: for (var j = 0; j < numSearches; j++) // Loop through the number of searches
-          {
-            numSearchWords = searches[j].length - 1;
+          const upcDatabaseSheet = spreadsheet.getSheetByName('UPC Database')
+          const upcs = upcDatabaseSheet.getSheetValues(1, 1, upcDatabaseSheet.getLastRow(), 1)
+          var l = 0; // Lower-bound
+          var u = upcs.length - 1; // Upper-bound
+          var m = Math.ceil((u + l)/2) // Midpoint
+          searches[0][0] = parseInt(searches[0][0])
+          isBarcodeScanned = true;
 
-            for (var k = 0; k <= numSearchWords; k++) // Loop through each word in each set of searches
+          while (l < m && u > m) // Loop through the UPC codes using the binary search algorithm
+          {
+            if (searches[0][0] < parseInt(upcs[m][0]))
+              u = m;   
+            else if (searches[0][0] > parseInt(upcs[m][0]))
+              l = m;
+            else // UPC code was found!
             {
-              if (data[i][0].toString().toLowerCase().includes(searches[j][k])) // Does the i-th item description contain the k-th search word in the j-th search
+              const splitDescription = upcDatabaseSheet.getSheetValues(m + 1, 2, 1, 1)[0][0].toString().toUpperCase().split(' - ')
+              const sku = splitDescription.pop();
+              const uom = splitDescription.pop();
+              splitDescription.pop();
+              splitDescription.pop();
+              output.push(['D', sku, '', '', uom, splitDescription.join(' - ')]);
+
+              var newItemRow = (isNotBlank(sheet.getSheetValues(5, 4, 1, 1)[0][0])) ? 
+                  Math.max(getLastRowSpecial(sheet.getSheetValues(1, 4, sheet.getMaxRows(), 1)), // SKU column
+                  getLastRowSpecial(sheet.getSheetValues(1, 8, sheet.getMaxRows(), 1))) // Description column
+                + 1 : 5;
+                
+              break; // Item was found, therefore stop searching
+            }
+              
+            m = Math.ceil((u + l)/2) // Midpoint
+          }
+        }
+        else
+        {
+          const inventorySheet = spreadsheet.getSheetByName('Item List');
+          const data = inventorySheet.getSheetValues(1, 1, inventorySheet.getLastRow(), 1);
+
+          for (var i = 0; i < data.length; i++) // Loop through all of the descriptions from the search data
+          {
+            loop: for (var j = 0; j < numSearches; j++) // Loop through the number of searches
+            {
+              numSearchWords = searches[j].length - 1;
+
+              for (var k = 0; k <= numSearchWords; k++) // Loop through each word in each set of searches
               {
-                if (k === numSearchWords) // The last search word was succesfully found in the ith item, and thus, this item is returned in the search
+                if (data[i][0].toString().toLowerCase().includes(searches[j][k])) // Does the i-th item description contain the k-th search word in the j-th search
                 {
-                  output.push(data[i]);
-                  break loop;
+                  if (k === numSearchWords) // The last search word was succesfully found in the ith item, and thus, this item is returned in the search
+                  {
+                    output.push(data[i]);
+                    break loop;
+                  }
                 }
+                else
+                  break; // One of the words in the User's query was NOT contained in the ith item description, therefore move on to the next item
               }
-              else
-                break; // One of the words in the User's query was NOT contained in the ith item description, therefore move on to the next item
             }
           }
         }
@@ -709,6 +787,11 @@ function search(e, spreadsheet, sheet, isMultipleItemSearch)
         sheet.getRange('A1').activate() // Move the user back to the seachbox
           .offset( 4, 0, sheet.getMaxRows() - 4).clearContent().setBackground('#cccccc') // Clear content
           .offset(-3, 8, 1, 1).setValue("No results found.\nPlease try again.");
+      else if (isBarcodeScanned)
+        sheet.getRange(5, 1, sheet.getMaxRows() - 4).clearContent().setBackground('#cccccc')
+          .offset(-3, 8, 1, 1).setValue("Barcode found.")
+          .offset(newItemRow - 2, -6, 1, 6).setValues(output) 
+          .offset(0, 2, 1, 1).activate();
       else
         sheet.getRange('A5').activate() // Move the user to the top of the search items
           .offset( 0, 0, sheet.getMaxRows() - 4).clearContent().setBackground('#cccccc')
@@ -898,6 +981,16 @@ function sortByCreatedDate(a, b)
 }
 
 /**
+ * This function sorts the UPC Codes in numerical order.
+ * 
+ * @author Jarren Ralf
+ */
+function sortUPCsNumerically(a, b)
+{
+  return parseInt(a[0]) - parseInt(b[0]);
+}
+
+/**
  * This function updates all of the items daily.
  * 
  * @author Jarren Ralf
@@ -920,6 +1013,26 @@ function updateItems()
   const numItems = itemList.length;
   spreadsheet.getSheetByName('Item List').getRange(1, 1, numItems).setValues(itemList);
   spreadsheet.getSheetByName('Recently Created').getRange(1, 1, numItems).setValues(sortedItems);
+}
+
+/**
+ * This function looks at the UPC database and removes all of the barcodes that are not UPC-A or EAN-13. It also updates the data with the typical Google sheets description string.
+ * 
+ * @author Jarren Ralf
+ */
+function updateUPCs()
+{
+  var sku_upc, item;
+  const adagioInventory = Utilities.parseCsv(DriveApp.getFilesByName("inventory.csv").next().getBlob().getDataAsString())
+  const itemNum = adagioInventory[0].indexOf('Item #')
+  const fullDescription = adagioInventory[0].indexOf('Item List')
+  const data = Utilities.parseCsv(DriveApp.getFilesByName("BarcodeInput.csv").next().getBlob().getDataAsString()).filter(upc => isUPC_A(upc[0]) || isEAN_13(upc[0])).map(upcs => {
+    sku_upc = upcs[1].toUpperCase()
+    item = adagioInventory.find(sku => sku[itemNum] === sku_upc)
+    return (item != null) ? [upcs[0], item[fullDescription]] : null;
+  }).filter(val => val != null).sort(sortUPCsNumerically)
+
+  SpreadsheetApp.getActive().getSheetByName('UPC Database').clearContents().getRange(1, 1, data.length, data[0].length).setNumberFormat('@').setValues(data);
 }
 
 /**
