@@ -310,6 +310,7 @@ function completeReceipt()
 function createTrigger()
 {
   ScriptApp.newTrigger('updateItems').timeBased().everyDays(1).atHour(23).create();
+  ScriptApp.newTrigger('updateUPCs').timeBased().everyDays(1).atHour(23).create();
 }
 
 /**
