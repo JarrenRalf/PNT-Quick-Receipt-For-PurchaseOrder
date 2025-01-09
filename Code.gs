@@ -440,7 +440,7 @@ function isUPC_A(upcNumber)
   for (var i = 0, sum = 0, upc = upcNumber.toString(); i < upc.length - 1; i++)
     sum += (i % 2 === 0) ? Number(upc[i])*3 : Number(upc[i])
 
-  return upc.endsWith(Math.ceil(sum/10)*10 - sum)
+  return upc.endsWith(Math.ceil(sum/10)*10 - sum) && upc.length === 12;
 }
 
 /**
@@ -455,7 +455,7 @@ function isEAN_13(upcNumber)
   for (var i = 0, sum = 0, upc = upcNumber.toString(); i < upc.length - 1; i++)
     sum += (i % 2 === 0) ? Number(upc[i]) : Number(upc[i])*3
 
-  return upc.endsWith(Math.ceil(sum/10)*10 - sum)
+  return upc.endsWith(Math.ceil(sum/10)*10 - sum) && upc.length === 13;
 }
 
 /**
