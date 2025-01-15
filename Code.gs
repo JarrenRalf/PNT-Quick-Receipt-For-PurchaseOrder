@@ -168,7 +168,7 @@ function completeReceipt()
     }
     else
     {
-      var exportData_WithDiscountedPrices = [];
+      var exportData = [];
       const numRows = Math.max(getLastRowSpecial(searchSheet.getSheetValues(4, 4, searchSheet.getMaxRows() - 3, 1)), 
                                getLastRowSpecial(searchSheet.getSheetValues(4, 8, searchSheet.getMaxRows() - 3, 1)), 
                                getLastRowSpecial(searchSheet.getSheetValues(4, 9, searchSheet.getMaxRows() - 3, 1)));
@@ -177,9 +177,9 @@ function completeReceipt()
 
       orderRange.getValues().map(item => {
         if (item[0] === 'H')
-          exportData_WithDiscountedPrices.push(['H', item[1], item[2], item[3]])
+          exportData.push(['H', item[1], item[2], item[3], item[5]])
         else if (item[0] === 'I')
-          exportData_WithDiscountedPrices.push(['I', item[1], '', ''])
+          exportData.push(['I', item[1], '', '', ''])
         else if (item[0] === 'R')
         {
           item[1] = item[1].toString().trim().toUpperCase(); // Make the SKU uppercase
@@ -187,39 +187,39 @@ function completeReceipt()
           if (isNotBlank(item[1])) // SKU is not blank
             if (isNotBlank(item[2])) // Order quantity is not blank
               if (Number(item[2]).toString() !== 'NaN') // Order number is a valid number
-                exportData_WithDiscountedPrices.push(['R', item[1], item[2], item[3]])
+                exportData.push(['R', item[1], item[2], item[3], item[5]])
               else // Order quantity is not a valid number
-                exportData_WithDiscountedPrices.push(
-                  ['R', item[1], 0, item[3]], 
-                  ['C', 'Invalid order QTY: "' + item[2] + '" for above item, therefore it was replaced with 0', '', '']
+                exportData.push(
+                  ['R', item[1], 0, item[3], item[5]], 
+                  ['C', 'Invalid order QTY: "' + item[2] + '" for above item, therefore it was replaced with 0', '', '', '']
                 )
             else // The order quantity is blank (while SKU is not)
-              exportData_WithDiscountedPrices.push(
-                ['R', item[1], 0, item[3]],
-                ['C', 'Order quantity was blank for the above item, therefore it was replaced with 0', '', '']
+              exportData.push(
+                ['R', item[1], 0, item[3], item[5]],
+                ['C', 'Order quantity was blank for the above item, therefore it was replaced with 0', '', '', '']
               )
           else // The SKU is blank
             if (isNotBlank(item[2])) // Order quantity is not blank
               if (Number(item[2]).toString() !== 'NaN') // Order number is a valid number
-                exportData_WithDiscountedPrices.push(
-                  ['R', 'MISCITEM', item[2], item[3]], 
-                  ...('Description: ' + item[5] + ' - ' + item[4]).toString().match(/.{1,75}/g).map(c => ['C', c, '', ''])
+                exportData.push(
+                  ['R', 'MISCITEM', item[2], item[3], item[5]], 
+                  ...('Description: ' + item[5] + ' - ' + item[4]).toString().match(/.{1,75}/g).map(c => ['C', c, '', '', ''])
                 )
               else // Order quantity is not a valid number
-                exportData_WithDiscountedPrices.push(
-                  ['R', 'MISCITEM', 0, 0], 
-                  ['C', 'Invalid order QTY: "' + item[2] + '" for above item, therefore it was replaced with 0', '', ''], 
-                  ...('Description: ' + item[5] + ' - ' + item[4]).toString().match(/.{1,75}/g).map(c => ['C', c, '', ''])
+                exportData.push(
+                  ['R', 'MISCITEM', 0, 0, ''], 
+                  ['C', 'Invalid order QTY: "' + item[2] + '" for above item, therefore it was replaced with 0', '', '', ''], 
+                  ...('Description: ' + item[5] + ' - ' + item[4]).toString().match(/.{1,75}/g).map(c => ['C', c, '', '', ''])
                 )
             else if (isNotBlank(item[5]))// Description is not blank (but SKU and quantity are)
-                exportData_WithDiscountedPrices.push(
-                  ['R', 'MISCITEM', 0, 0], 
-                  ['C', 'Order quantity was blank for the above item, therefore it was replaced with 0', '', ''],
-                  ...('Description: ' + item[5] + ' - ' + item[4]).toString().match(/.{1,75}/g).map(c => ['C', c, '', ''])
+                exportData.push(
+                  ['R', 'MISCITEM', 0, 0, ''], 
+                  ['C', 'Order quantity was blank for the above item, therefore it was replaced with 0', '', '', ''],
+                  ...('Description: ' + item[5] + ' - ' + item[4]).toString().match(/.{1,75}/g).map(c => ['C', c, '', '', ''])
                 )
 
           if (isNotBlank(item[6])) // There are notes for the current line
-            exportData_WithDiscountedPrices.push(...('Notes: ' + item[6]).match(/.{1,75}/g).map(c => ['C', c, '', '']))
+            exportData.push(...('Notes: ' + item[6]).match(/.{1,75}/g).map(c => ['C', c, '', '', '']))
         }
         else // There was no line indicator
         {
@@ -229,42 +229,42 @@ function completeReceipt()
           {
             if (isNotBlank(item[2])) // Order quantity is not blank
               if (Number(item[2]).toString() !== 'NaN') // Order number is a valid number
-                exportData_WithDiscountedPrices.push(['R', item[1], item[2], item[3]])
+                exportData.push(['R', item[1], item[2], item[3], item[5]])
               else // Order quantity is not a valid number
-                exportData_WithDiscountedPrices.push(
-                  ['R', item[1], 0, item[3]], 
-                  ['C', 'Invalid order QTY: "' + item[2] + '" for above item, therefore it was replaced with 0', '', '']
+                exportData.push(
+                  ['R', item[1], 0, item[3], item[5]], 
+                  ['C', 'Invalid order QTY: "' + item[2] + '" for above item, therefore it was replaced with 0', '', '', '']
                 )
             else // The order quantity is blank (while SKU is not)
-              exportData_WithDiscountedPrices.push(
-                ['R', item[1], item[2], 0],
-                ['C', 'Order quantity was blank for the above item, therefore it was replaced with 0', '', '']
+              exportData.push(
+                ['R', item[1], item[2], 0, ''],
+                ['C', 'Order quantity was blank for the above item, therefore it was replaced with 0', '', '', '']
               )
           }
           else // The SKU is blank
           {
             if (isNotBlank(item[2])) // Order quantity is not blank
               if (Number(item[2]).toString() !== 'NaN') // Order number is a valid number
-                exportData_WithDiscountedPrices.push(
-                  ['R', 'MISCITEM', item[2], 0], 
-                  ...('Description: ' + item[5] + ' - ' + item[4]).toString().match(/.{1,75}/g).map(c => ['C', c, '', ''])
+                exportData.push(
+                  ['R', 'MISCITEM', item[2], 0, ''], 
+                  ...('Description: ' + item[5] + ' - ' + item[4]).toString().match(/.{1,75}/g).map(c => ['C', c, '', '', ''])
                 )
               else // Order quantity is not a valid number
-                exportData_WithDiscountedPrices.push(
-                  ['R', 'MISCITEM', 0, 0], 
-                  ['C', 'Invalid order QTY: "' + item[2] + '" for above item, therefore it was replaced with 0', '', ''], 
-                  ...('Description: ' + item[5] + ' - ' + item[4]).toString().match(/.{1,75}/g).map(c => ['C', c, '', ''])
+                exportData.push(
+                  ['R', 'MISCITEM', 0, 0, ''], 
+                  ['C', 'Invalid order QTY: "' + item[2] + '" for above item, therefore it was replaced with 0', '', '', ''], 
+                  ...('Description: ' + item[5] + ' - ' + item[4]).toString().match(/.{1,75}/g).map(c => ['C', c, '', '', ''])
                 )
             else if (isNotBlank(item[5])) // Description is not blank (but SKU and quantity are)
-              exportData_WithDiscountedPrices.push(
-                ['R', 'MISCITEM', 0, 0], 
-                ['C', 'Order quantity was blank for the above item, therefore it was replaced with 0', '', ''],
-                ...('Description: ' + item[5] + ' - ' + item[4]).toString().match(/.{1,75}/g).map(c => ['C', c, '', ''])
+              exportData.push(
+                ['R', 'MISCITEM', 0, 0, ''], 
+                ['C', 'Order quantity was blank for the above item, therefore it was replaced with 0', '', '', ''],
+                ...('Description: ' + item[5] + ' - ' + item[4]).toString().match(/.{1,75}/g).map(c => ['C', c, '', '', ''])
               )
           }
 
           if (isNotBlank(item[6])) // There are notes for the current line
-            exportData_WithDiscountedPrices.push(...('Notes: ' + item[6]).match(/.{1,75}/g).map(c => ['C', c, '', '']))
+            exportData.push(...('Notes: ' + item[6]).match(/.{1,75}/g).map(c => ['C', c, '', '', '']))
         }
       })
 
@@ -283,16 +283,16 @@ function completeReceipt()
         '#e0d5fd'  // Make the instruction comment rows purple
       ];
 
-      exportData_WithDiscountedPrices.map((h, r) => 
+      exportData.map((h, r) => 
         h = (h[0] !== 'H') ? (h[0] !== 'C') ? (h[0] !== 'I') ? false : 
-        ranges[2].push('A' + (r + lastRow) + ':D' + (r + lastRow)) : // Instruction comment rows purple
-        ranges[1].push('A' + (r + lastRow) + ':D' + (r + lastRow)) : // Comment rows orange
-        ranges[0].push('A' + (r + lastRow) + ':D' + (r + lastRow))   // Header rows blue
+        ranges[2].push('A' + (r + lastRow) + ':E' + (r + lastRow)) : // Instruction comment rows purple
+        ranges[1].push('A' + (r + lastRow) + ':E' + (r + lastRow)) : // Comment rows orange
+        ranges[0].push('A' + (r + lastRow) + ':E' + (r + lastRow))   // Header rows blue
       )
 
       ranges.map((rngs, r) => (rngs.length !== 0) ? exportSheet.getRangeList(rngs).setBackground(backgroundColours[r]) : false); // Set the appropriate background colours
-      exportSheet.getRange(lastRow, 1, exportData_WithDiscountedPrices.length, 4).setNumberFormat('@').setValues(exportData_WithDiscountedPrices)
-        .offset(-1*lastRow + 1, 0, exportSheet.getLastRow(), 4).activate();
+      exportSheet.getRange(lastRow, 1, exportData.length, 5).setNumberFormat('@').setValues(exportData)
+        .offset(-1*lastRow + 1, 0, exportSheet.getLastRow(), 5).activate();
     }
   }
   catch (e)
