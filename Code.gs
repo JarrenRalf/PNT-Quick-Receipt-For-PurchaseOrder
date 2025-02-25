@@ -177,7 +177,7 @@ function completeReceipt()
 
       orderRange.getValues().map(item => {
         if (item[0] === 'H')
-          exportData.push(['H', item[1], item[2], item[3], item[5]])
+          exportData.push(['H', item[1], item[2], item[3], item[4]])
         else if (item[0] === 'I')
           exportData.push(['I', item[1], '', '', ''])
         else if (item[0] === 'R')
