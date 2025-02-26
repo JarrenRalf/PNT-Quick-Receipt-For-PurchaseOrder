@@ -269,11 +269,9 @@ function completeReceipt()
       })
 
       orderRange.offset(1, 0, numRows - 1, numCols).clearContent() // Quick Receipt
-        .offset(-4, -1, 1, 1).setValue('')       // Vendor #
-        .offset( 1,  0).setValue('')             // Vendor Name
-        .offset( 0,  6).setValue('')             // Vendor Doc #
-        .offset( 0,  1).setValue('')             // Message Display
-        .offset(-1,  0).setValue('').activate(); // Vendor Search
+        .offset(-4, -1, 2, 5).setValues([['', '', '', '', '100'], ['', '', '', '', '']]) // Vendor #, Shipping Location, and Vendor Name
+        .offset( 0,  6, 2, 2).setValues([['Search for Vendor (or Enter Vendor #):', ''], ['', '']]) // Vendor Doc #, Vendor Search, and Message Display
+        .offset( 0,  1).activate(); // Vendor Search
       const exportSheet = SpreadsheetApp.getActive().getSheetByName('Export');
       const lastRow = exportSheet.getLastRow() + 1;
       const ranges = [[],[],[]];
