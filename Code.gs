@@ -278,8 +278,7 @@ function completeReceipt()
       const backgroundColours = [
         '#c9daf8', // Make the header rows blue
         '#fcefe1', // Make the comment rows orange
-        '#e0d5fd', // Make the instruction comment rows purple
-        '#ea9999'  // Make the description field light red
+        '#e0d5fd'  // Make the instruction comment rows purple
       ];
 
       exportData.map((h, r) => 
@@ -291,8 +290,6 @@ function completeReceipt()
           ranges[1].push('A' + (r + lastRow) + ':G' + (r + lastRow)) :   // Comment rows orange
         ranges[0].push('A' + (r + lastRow) + ':G' + (r + lastRow))       // Header rows blue
       )
-
-      ranges.push(ranges[0].map(rng => rng.split(":").pop()));
 
       ranges.map((rngs, r) => (rngs.length !== 0) ? exportSheet.getRangeList(rngs).setBackground(backgroundColours[r]) : false); // Set the appropriate background colours
       exportSheet.getRange(lastRow, 1, exportData.length, 7).setNumberFormat('@').setValues(exportData)
