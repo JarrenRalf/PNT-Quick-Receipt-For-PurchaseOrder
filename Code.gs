@@ -141,7 +141,7 @@ function clearExport()
       Browser.msgBox('You must be on the Export sheet in order to clear it.')
     }
     else
-      exportSheet.clear();
+      exportSheet.clearContents().getRange(1, 1, exportSheet.getMaxRows(), exportSheet.getMaxColumns()).setBackground('white');
   }
   catch (e)
   {
