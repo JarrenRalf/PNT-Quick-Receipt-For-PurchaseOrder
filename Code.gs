@@ -1084,6 +1084,7 @@ function vendorSelection(range, spreadsheet)
   {
     const vendorSheet = spreadsheet.getSheetByName('Vendor List');
     range.offset(-1, 0).setValue(vendorSheet.getSheetValues(2, 1, vendorSheet.getLastRow() - 1, 2).find(vendor => vendor[1] === selectedVendor)[0])
+      .offset(0, -1).activate() // Move User to search bar
   }
   else
     range.offset(-1, 0).setValue('');
