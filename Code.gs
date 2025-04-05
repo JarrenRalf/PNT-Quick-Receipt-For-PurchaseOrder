@@ -745,6 +745,8 @@ function search(e, spreadsheet, sheet, isMultipleItemSearch)
       }
       else // The word 'not' was found in the search string
       {
+        const inventorySheet = spreadsheet.getSheetByName('Item List');
+        const data = inventorySheet.getSheetValues(1, 1, inventorySheet.getLastRow(), 1);
         var dontIncludeTheseWords = searchesOrNot[1].split(/\s+/);
         var numSearchWords_ToNotInclude;
 
