@@ -310,8 +310,11 @@ function completeReceipt()
  */
 function createTrigger()
 {
+  const ss = SpreadsheetApp.getActive();
   ScriptApp.newTrigger('updateItems').timeBased().everyDays(1).atHour(23).create();
   ScriptApp.newTrigger('updateUPCs').timeBased().everyDays(1).atHour(23).create();
+  ScriptApp.newTrigger('installedOnEdit').forSpreadsheet(ss).onEdit().create();
+  ScriptApp.newTrigger('onChange').forSpreadsheet(ss).onChange().create();
 }
 
 /**
