@@ -476,7 +476,7 @@ function processImportedData(e)
     var sheets = spreadsheet.getSheets();
     var info, numRows = 0, numCols = 1, maxRow = 2, maxCol = 3, vendorData = 4, fileName;
 
-    for (var sheet = sheets.length - 1; sheet >= 0; sheet--) // Loop through all of the sheets in this spreadsheet and find the new one
+    for (var sheet = sheets.length - 1; sheet > -1; sheet--) // Loop through all of the sheets in this spreadsheet and find the new one
     {
       if (sheets[sheet].getType() == SpreadsheetApp.SheetType.GRID) // Some sheets in this spreadsheet are OBJECT sheets because they contain full charts
       {
